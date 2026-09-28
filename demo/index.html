@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Scout demo host page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: -apple-system, sans-serif; margin: 0; padding: 60px 24px; background: #fafafa; color: #222; }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 28px; }
+    p { line-height: 1.6; color: #444; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>This is a placeholder website</h1>
+    <p>
+      This page exists only to preview the Scout widget in isolation. Click the mascot bubble in
+      the bottom-right corner. It will try to call <code>/api/scout/chat</code>, so run
+      <code>packages/server</code> alongside this page (or serve this file from the same origin
+      as the server) to see real answers instead of a connection error.
+    </p>
+  </main>
+
+  <script
+    src="../packages/widget/scout-widget.js"
+    data-api-url="http://localhost:4000/api/chat"
+    data-primary-color="#4f46e5"
+    data-site-name="the demo site"
+    data-position="bottom-right"
+    defer
+  ></script>
+</body>
+</html>

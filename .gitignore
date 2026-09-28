@@ -1,0 +1,8 @@
+node_modules/
+.env
+packages/server/data/
+packages/server/.cache/
+.DS_Store
+.venv/
+.idea/
+__pycache__/
