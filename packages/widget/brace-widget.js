@@ -1,91 +1,33 @@
 /**
- * Brace — self-contained chat widget. The mascot hides below the bottom edge of the
- * page and peeks over it; clicking pops it fully into view.
+ * Brace — self-contained chat widget. The mascot (packages/widget/brace-mascot.js)
+ * hides below the bottom edge of the page and peeks over it; clicking makes it climb
+ * out and hand off to the chat panel.
  * Include via: <script src="brace-widget.js" data-api-url="/api/brace/chat" defer></script>
  * Auto-mounts a <brace-widget> element from the script tag's data-* attributes.
  * Ships as a Web Component with Shadow DOM so host-page CSS never leaks in or out.
- * Uses the vendored GSAP (packages/widget/vendor/gsap.min.js, loaded lazily, same
- * directory as this file) for the pop animation, with a pure-CSS fallback if that
- * fails to load for any reason — the widget never depends on it to function.
+ * Loads two same-directory files at runtime: vendor/gsap.min.js (optional — the mascot
+ * degrades to CSS transitions without it) and brace-mascot.js (required — the widget
+ * falls back to a plain unanimated launcher button if this fails to load, so a network
+ * hiccup never leaves the site with no way to open the chat at all).
  */
 (function () {
   const TAG = "brace-widget";
   if (customElements.get(TAG)) return;
 
-  // The launcher sits `bottom: 22px` clear of the page edge, so hiding it requires
-  // translating past that gap *plus* however much of the button should go off-screen —
-  // not just the hidden amount on its own.
-  const HIDE_Y = 56; // rest: closes the 22px gap + pushes ~34px of the button off-screen (shows top ~50px: eyes + head)
-  const TEASE_Y = 42; // idle tease: peeks up further, revealing the smile too
-  const OPEN_Y = 0; // fully popped up, back at its natural bottom:22px position
-
-  const MASCOT_SVG = `
-    <svg viewBox="0 0 100 100" class="brace-mascot" aria-hidden="true">
-      <ellipse class="brace-body" cx="50" cy="55" rx="34" ry="30" />
-      <circle class="brace-eye" cx="38" cy="52" r="5" />
-      <circle class="brace-eye" cx="62" cy="52" r="5" />
-      <path class="brace-mouth" d="M 40 66 Q 50 72 60 66" />
-      <circle class="brace-cheek" cx="30" cy="60" r="4" />
-      <circle class="brace-cheek" cx="70" cy="60" r="4" />
-    </svg>`;
-
-  const STYLES = `
+  const PANEL_STYLES = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-    .launcher {
+    .fallback-launcher {
       position: fixed;
-      width: 84px; height: 84px;
+      width: 60px; height: 60px;
       border-radius: 50%;
       background: linear-gradient(160deg, var(--brace-primary, #6d5ef8), var(--brace-primary-dark, #4b3ff0));
-      box-shadow: 0 10px 26px rgba(0,0,0,0.28);
-      border: none;
-      cursor: pointer;
+      color: #fff; font-size: 24px;
+      border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       z-index: 999999;
-      padding: 10px;
-      transform: translateY(${HIDE_Y}px);
-    }
-    .launcher:hover { filter: brightness(1.05); }
-
-    .launcher.peeking { animation: peekTease 4.5s ease-in-out infinite; }
-    @keyframes peekTease {
-      0%, 60%, 100% { transform: translateY(${HIDE_Y}px); }
-      80% { transform: translateY(${TEASE_Y}px); }
-    }
-
-    .launcher::before {
-      content: ""; position: absolute; inset: -8px; border-radius: 50%;
-      background: var(--brace-primary, #6d5ef8); opacity: 0.3; z-index: -1;
-      animation: pulseRing 2.6s ease-out infinite;
-    }
-    .launcher.chat-open::before { display: none; }
-    @keyframes pulseRing {
-      0% { transform: scale(0.82); opacity: 0.4; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .brace-mascot { width: 100%; height: 100%; overflow: visible; }
-    .brace-body { fill: #ffffff; }
-    .brace-eye { fill: var(--brace-primary, #6d5ef8); transform-origin: center; }
-    .brace-mouth { stroke: var(--brace-primary, #6d5ef8); stroke-width: 3; fill: none; stroke-linecap: round; }
-    .brace-cheek { fill: var(--brace-primary, #6d5ef8); opacity: 0.25; }
-
-    .launcher.thinking .brace-eye { animation: blink 0.9s ease-in-out infinite; }
-    @keyframes blink { 0%, 80%, 100% { transform: scaleY(1); } 90% { transform: scaleY(0.15); } }
-
-    .launcher.happy .brace-mascot { animation: happyBounce 0.5s ease; }
-    @keyframes happyBounce {
-      0% { transform: scale(1); }
-      35% { transform: scale(0.88, 1.15); }
-      60% { transform: scale(1.1, 0.9); }
-      100% { transform: scale(1); }
-    }
-
-    .badge {
-      position: absolute; top: 6px; right: 6px;
-      width: 14px; height: 14px; border-radius: 50%;
-      background: #34d399; border: 2px solid white;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.25);
     }
 
     .panel {
@@ -109,7 +51,8 @@
       color: #fff; padding: 16px 18px;
       display: flex; align-items: center; gap: 10px;
     }
-    .panel-header .avatar { width: 34px; height: 34px; }
+    .panel-header .avatar { width: 34px; height: 34px; flex-shrink: 0; }
+    .panel-header .avatar svg { width: 100%; height: 100%; display: block; overflow: visible; }
     .panel-header .title { font-weight: 700; font-size: 15px; }
     .panel-header .subtitle { font-size: 12px; opacity: 0.85; }
     .close-btn {
@@ -184,50 +127,57 @@
       .join("");
   }
 
-  // --- lazy-load the vendored animation library; the widget works fine without it ---
+  // --- lazy-load same-directory scripts; each is cached on `window` so multiple
+  // widget instances on one page only fetch them once ---
   const SCRIPT_URL = document.currentScript ? document.currentScript.src : "";
   const BASE_URL = SCRIPT_URL.replace(/[^/]+$/, "");
+  function loadScript(src) {
+    return new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+  }
   function loadGSAP() {
     if (window.gsap) return Promise.resolve(window.gsap);
     if (!window.__braceGsapLoad) {
-      window.__braceGsapLoad = new Promise((resolve) => {
-        const s = document.createElement("script");
-        s.src = BASE_URL + "vendor/gsap.min.js";
-        s.onload = () => resolve(window.gsap || null);
-        s.onerror = () => resolve(null);
-        document.head.appendChild(s);
-      });
+      window.__braceGsapLoad = loadScript(BASE_URL + "vendor/gsap.min.js").then(() => window.gsap || null);
     }
     return window.__braceGsapLoad;
   }
+  function loadMascotLib() {
+    if (window.BraceMascot) return Promise.resolve(window.BraceMascot);
+    if (!window.__braceMascotLoad) {
+      window.__braceMascotLoad = loadScript(BASE_URL + "brace-mascot.js").then(() => window.BraceMascot || null);
+    }
+    return window.__braceMascotLoad;
+  }
 
   class BraceWidget extends HTMLElement {
-    connectedCallback() {
+    async connectedCallback() {
       this.apiUrl = this.getAttribute("api-url") || "/api/brace/chat";
       this.position = this.getAttribute("position") || "bottom-right";
       this.greeting = this.getAttribute("greeting") || "Hi! Ask me anything about this site — I can find the right page for you.";
       this.siteName = this.getAttribute("site-name") || "this site";
       const primary = this.getAttribute("primary-color") || "#6d5ef8";
+      const side = this.position.includes("left") ? "left" : "right";
 
       this.history = [];
       this._open = false;
-      loadGSAP(); // kick off in the background; never block on it
 
       const root = this.attachShadow({ mode: "open" });
       const style = document.createElement("style");
-      style.textContent = STYLES + this._positionCSS();
+      style.textContent = PANEL_STYLES + this._positionCSS(side);
       root.appendChild(style);
       this.style.setProperty("--brace-primary", primary);
       this.style.setProperty("--brace-primary-dark", this._darken(primary));
 
       root.innerHTML += `
-        <button class="launcher peeking" part="launcher" aria-label="Open ${this.siteName} assistant">
-          ${MASCOT_SVG}
-          <span class="badge"></span>
-        </button>
         <div class="panel">
           <div class="panel-header">
-            <div class="avatar">${MASCOT_SVG}</div>
+            <div class="avatar"></div>
             <div>
               <div class="title">Brace</div>
               <div class="subtitle">Ask about ${this.siteName}</div>
@@ -242,28 +192,49 @@
         </div>
       `;
 
-      this.$launcher = root.querySelector(".launcher");
       this.$panel = root.querySelector(".panel");
       this.$messages = root.querySelector(".messages");
       this.$input = root.querySelector("input");
       this.$send = root.querySelector(".send-btn");
 
-      this.$launcher.addEventListener("click", () => this.toggle());
       root.querySelector(".close-btn").addEventListener("click", () => this.toggle(false));
       this.$send.addEventListener("click", () => this._submit());
       this.$input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") this._submit();
       });
 
+      const [gsap, BraceMascot] = await Promise.all([loadGSAP(), loadMascotLib()]);
+
+      if (BraceMascot) {
+        this._mascot = BraceMascot.create(root, {
+          gsap,
+          side,
+          label: `Open ${this.siteName} assistant`,
+        });
+        this.$launcher = this._mascot.el;
+        root.querySelector(".avatar").innerHTML = BraceMascot.SVG;
+      } else {
+        // brace-mascot.js failed to load (offline, blocked, etc.) — a plain button
+        // beats leaving the site with no way to open the chat at all.
+        console.error("Brace: could not load brace-mascot.js — using a plain fallback launcher.");
+        const btn = document.createElement("button");
+        btn.className = "fallback-launcher";
+        btn.setAttribute("aria-label", `Open ${this.siteName} assistant`);
+        btn.textContent = "💬";
+        root.appendChild(btn);
+        this.$launcher = btn;
+        this._mascot = { open: () => Promise.resolve(), close: () => Promise.resolve(), thinking() {}, happy() {} };
+      }
+      this.$launcher.addEventListener("click", () => this.toggle());
+
       this._addMessage("bot", this.greeting);
     }
 
-    _positionCSS() {
-      const isRight = this.position.includes("right");
-      const side = isRight ? "right: 22px;" : "left: 22px;";
+    _positionCSS(side) {
+      const rule = side === "left" ? "left: 24px;" : "right: 24px;";
       return `
-        .launcher { bottom: 22px; ${side} }
-        .panel { bottom: 116px; ${side} }
+        .panel { bottom: 130px; ${rule} }
+        .fallback-launcher { bottom: 22px; ${rule} }
       `;
     }
 
@@ -277,48 +248,17 @@
       return `rgb(${r},${g},${b})`;
     }
 
-    // Pops the mascot fully into view (or lets it duck back down to peeking), via
-    // GSAP if it loaded in time, falling back to a plain CSS transition otherwise.
-    _animateLauncher(open) {
-      const el = this.$launcher;
-      const gsap = window.gsap;
-      if (open) {
-        el.classList.remove("peeking");
-        el.classList.add("chat-open");
-      }
-      if (gsap) {
-        gsap.killTweensOf(el);
-        gsap.to(el, {
-          y: open ? OPEN_Y : HIDE_Y,
-          duration: open ? 0.6 : 0.4,
-          ease: open ? "back.out(1.7)" : "power2.in",
-          onComplete: () => {
-            if (!open) {
-              gsap.set(el, { clearProps: "transform" });
-              el.classList.remove("chat-open");
-              el.classList.add("peeking");
-            }
-          },
-        });
+    async toggle(force) {
+      const opening = force !== undefined ? force : !this._open;
+      this._open = opening;
+      if (opening) {
+        await this._mascot.open();
+        this.$panel.classList.add("open");
+        this.$input.focus();
       } else {
-        el.style.transition = `transform ${open ? "0.55s" : "0.4s"} cubic-bezier(0.34,1.56,0.64,1)`;
-        el.style.transform = `translateY(${open ? OPEN_Y : HIDE_Y}px)`;
-        if (!open) {
-          setTimeout(() => {
-            el.style.transition = "";
-            el.style.transform = "";
-            el.classList.remove("chat-open");
-            el.classList.add("peeking");
-          }, 420);
-        }
+        this.$panel.classList.remove("open");
+        this._mascot.close();
       }
-    }
-
-    toggle(force) {
-      this._open = force !== undefined ? force : !this._open;
-      this.$panel.classList.toggle("open", this._open);
-      this._animateLauncher(this._open);
-      if (this._open) this.$input.focus();
     }
 
     _addMessage(role, text, sources) {
@@ -365,8 +305,7 @@
       this.$send.disabled = true;
       this._addMessage("user", text);
       this.history.push({ role: "user", content: text });
-      this.$launcher.classList.remove("happy");
-      this.$launcher.classList.add("thinking");
+      this._mascot.thinking(true);
 
       const typing = document.createElement("div");
       typing.className = "typing";
@@ -385,13 +324,11 @@
         const answer = data.answer || "Sorry, I couldn't find an answer to that.";
         this._addMessage("bot", answer, data.sources);
         this.history.push({ role: "assistant", content: answer });
-        this.$launcher.classList.remove("thinking");
-        this.$launcher.classList.add("happy");
-        setTimeout(() => this.$launcher.classList.remove("happy"), 600);
+        this._mascot.happy();
       } catch (err) {
         typing.remove();
         this._addMessage("bot", "I'm having trouble reaching the server right now — please try again in a moment.");
-        this.$launcher.classList.remove("thinking");
+        this._mascot.thinking(false);
       } finally {
         this.$input.disabled = false;
         this.$send.disabled = false;
