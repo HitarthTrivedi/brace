@@ -7,7 +7,7 @@ async function fetchText(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "ScoutBot/0.1 (+site-crawler)" } });
+    const res = await fetch(url, { signal: controller.signal, headers: { "User-Agent": "BraceBot/0.1 (+site-crawler)" } });
     if (!res.ok) return null;
     return await res.text();
   } catch {

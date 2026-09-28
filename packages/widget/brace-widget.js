@@ -1,21 +1,21 @@
 /**
- * Scout — self-contained, dependency-free chat widget.
- * Include via: <script src="scout-widget.js" data-api-url="/api/scout/chat" defer></script>
- * Auto-mounts a <scout-widget> element from the script tag's data-* attributes.
+ * Brace — self-contained, dependency-free chat widget.
+ * Include via: <script src="brace-widget.js" data-api-url="/api/brace/chat" defer></script>
+ * Auto-mounts a <brace-widget> element from the script tag's data-* attributes.
  * Ships as a Web Component with Shadow DOM so host-page CSS never leaks in or out.
  */
 (function () {
-  const TAG = "scout-widget";
+  const TAG = "brace-widget";
   if (customElements.get(TAG)) return;
 
   const MASCOT_SVG = `
-    <svg viewBox="0 0 100 100" class="scout-mascot" aria-hidden="true">
-      <ellipse class="scout-body" cx="50" cy="55" rx="34" ry="30" />
-      <circle class="scout-eye" cx="38" cy="52" r="5" />
-      <circle class="scout-eye" cx="62" cy="52" r="5" />
-      <path class="scout-mouth" d="M 40 66 Q 50 72 60 66" />
-      <circle class="scout-cheek" cx="30" cy="60" r="4" />
-      <circle class="scout-cheek" cx="70" cy="60" r="4" />
+    <svg viewBox="0 0 100 100" class="brace-mascot" aria-hidden="true">
+      <ellipse class="brace-body" cx="50" cy="55" rx="34" ry="30" />
+      <circle class="brace-eye" cx="38" cy="52" r="5" />
+      <circle class="brace-eye" cx="62" cy="52" r="5" />
+      <path class="brace-mouth" d="M 40 66 Q 50 72 60 66" />
+      <circle class="brace-cheek" cx="30" cy="60" r="4" />
+      <circle class="brace-cheek" cx="70" cy="60" r="4" />
     </svg>`;
 
   const STYLES = `
@@ -26,7 +26,7 @@
       position: fixed;
       width: 62px; height: 62px;
       border-radius: 50%;
-      background: linear-gradient(160deg, var(--scout-primary, #6d5ef8), var(--scout-primary-dark, #4b3ff0));
+      background: linear-gradient(160deg, var(--brace-primary, #6d5ef8), var(--brace-primary-dark, #4b3ff0));
       box-shadow: 0 6px 20px rgba(0,0,0,0.22);
       border: none;
       cursor: pointer;
@@ -38,22 +38,22 @@
     .launcher:hover { transform: scale(1.06); }
     .launcher:active { transform: scale(0.96); }
 
-    .scout-mascot { width: 100%; height: 100%; }
-    .scout-body { fill: #ffffff; }
-    .scout-eye { fill: var(--scout-primary, #6d5ef8); transform-origin: center; }
-    .scout-mouth { stroke: var(--scout-primary, #6d5ef8); stroke-width: 3; fill: none; stroke-linecap: round; }
-    .scout-cheek { fill: var(--scout-primary, #6d5ef8); opacity: 0.25; }
+    .brace-mascot { width: 100%; height: 100%; }
+    .brace-body { fill: #ffffff; }
+    .brace-eye { fill: var(--brace-primary, #6d5ef8); transform-origin: center; }
+    .brace-mouth { stroke: var(--brace-primary, #6d5ef8); stroke-width: 3; fill: none; stroke-linecap: round; }
+    .brace-cheek { fill: var(--brace-primary, #6d5ef8); opacity: 0.25; }
 
-    .launcher.idle .scout-mascot { animation: breathe 3.2s ease-in-out infinite; }
+    .launcher.idle .brace-mascot { animation: breathe 3.2s ease-in-out infinite; }
     @keyframes breathe {
       0%, 100% { transform: translateY(0) scale(1); }
       50% { transform: translateY(-3px) scale(1.03); }
     }
 
-    .launcher.thinking .scout-eye { animation: blink 0.9s ease-in-out infinite; }
+    .launcher.thinking .brace-eye { animation: blink 0.9s ease-in-out infinite; }
     @keyframes blink { 0%, 80%, 100% { transform: scaleY(1); } 90% { transform: scaleY(0.15); } }
 
-    .launcher.happy .scout-mascot { animation: bounce 0.5s ease; }
+    .launcher.happy .brace-mascot { animation: bounce 0.5s ease; }
     @keyframes bounce {
       0% { transform: scale(1); }
       35% { transform: scale(0.88, 1.15); }
@@ -84,7 +84,7 @@
     .panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 
     .panel-header {
-      background: linear-gradient(160deg, var(--scout-primary, #6d5ef8), var(--scout-primary-dark, #4b3ff0));
+      background: linear-gradient(160deg, var(--brace-primary, #6d5ef8), var(--brace-primary-dark, #4b3ff0));
       color: #fff; padding: 14px 16px;
       display: flex; align-items: center; gap: 10px;
     }
@@ -99,9 +99,9 @@
     .messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #f7f7fb; }
     .msg { max-width: 82%; padding: 9px 13px; border-radius: 14px; font-size: 13.5px; line-height: 1.45; }
     .msg.bot { align-self: flex-start; background: #fff; border: 1px solid #ececf3; border-bottom-left-radius: 4px; }
-    .msg.user { align-self: flex-end; background: var(--scout-primary, #6d5ef8); color: #fff; border-bottom-right-radius: 4px; }
-    .msg a { color: var(--scout-primary, #6d5ef8); font-weight: 600; }
-    .msg.bot a { color: var(--scout-primary, #6d5ef8); }
+    .msg.user { align-self: flex-end; background: var(--brace-primary, #6d5ef8); color: #fff; border-bottom-right-radius: 4px; }
+    .msg a { color: var(--brace-primary, #6d5ef8); font-weight: 600; }
+    .msg.bot a { color: var(--brace-primary, #6d5ef8); }
     .msg .sources { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
     .msg .sources a { font-size: 12px; text-decoration: none; }
 
@@ -116,18 +116,18 @@
       flex: 1; border: 1px solid #e2e2ec; border-radius: 999px; padding: 10px 14px;
       font-size: 13.5px; outline: none;
     }
-    .input-row input:focus { border-color: var(--scout-primary, #6d5ef8); }
+    .input-row input:focus { border-color: var(--brace-primary, #6d5ef8); }
     .input-row button {
-      background: var(--scout-primary, #6d5ef8); color: #fff; border: none;
+      background: var(--brace-primary, #6d5ef8); color: #fff; border: none;
       width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .input-row button:disabled { opacity: 0.5; cursor: default; }
   `;
 
-  class ScoutWidget extends HTMLElement {
+  class BraceWidget extends HTMLElement {
     connectedCallback() {
-      this.apiUrl = this.getAttribute("api-url") || "/api/scout/chat";
+      this.apiUrl = this.getAttribute("api-url") || "/api/brace/chat";
       this.position = this.getAttribute("position") || "bottom-right";
       this.greeting = this.getAttribute("greeting") || "Hi! Ask me anything about this site — I can find the right page for you.";
       this.siteName = this.getAttribute("site-name") || "this site";
@@ -142,8 +142,8 @@
       root.appendChild(style);
       // Custom properties are set on the host element (not the ShadowRoot, which has
       // no .style of its own) — they inherit into the shadow tree from there.
-      this.style.setProperty("--scout-primary", primary);
-      this.style.setProperty("--scout-primary-dark", this._darken(primary));
+      this.style.setProperty("--brace-primary", primary);
+      this.style.setProperty("--brace-primary-dark", this._darken(primary));
 
       root.innerHTML += `
         <button class="launcher idle" part="launcher" aria-label="Open ${this.siteName} assistant">
@@ -154,7 +154,7 @@
           <div class="panel-header">
             <div class="avatar">${MASCOT_SVG}</div>
             <div>
-              <div class="title">Scout</div>
+              <div class="title">Brace</div>
               <div class="subtitle">Ask about ${this.siteName}</div>
             </div>
             <button class="close-btn" aria-label="Close">✕</button>
@@ -294,10 +294,10 @@
     }
   }
 
-  customElements.define(TAG, ScoutWidget);
+  customElements.define(TAG, BraceWidget);
 
   // Auto-mount from the including <script>'s data-* attributes, so a single
-  // <script src="scout-widget.js" data-api-url="..."></script> is enough.
+  // <script src="brace-widget.js" data-api-url="..."></script> is enough.
   const currentScript = document.currentScript;
   function mount() {
     if (document.querySelector(TAG)) return; // developer already placed one manually

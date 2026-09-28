@@ -1,9 +1,9 @@
 {
-  "name": "scout-server",
+  "name": "brace-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted backend for the Scout website chat widget: crawls a site, indexes it locally, answers questions via a free LLM API.",
+  "description": "Self-hosted backend for the Brace website chat widget: crawls a site, indexes it locally, answers questions via a free LLM API.",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",

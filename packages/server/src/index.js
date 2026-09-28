@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const SYSTEM_PROMPT = `You are Scout, a friendly website assistant. Answer the visitor's question
+const SYSTEM_PROMPT = `You are Brace, a friendly website assistant. Answer the visitor's question
 using ONLY the site excerpts provided below. If the excerpts don't contain the answer, say you're
 not sure and suggest what part of the site they might check instead — never make up information
 that isn't in the excerpts. Keep answers short (2-4 sentences) and conversational.`;
@@ -60,5 +60,5 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
-  console.log(`Scout server listening on http://localhost:${port}`);
+  console.log(`Brace server listening on http://localhost:${port}`);
 });

@@ -1,6 +1,6 @@
-# Getting a free LLM API key for Scout
+# Getting a free LLM API key for Brace
 
-Scout only needs the LLM for the **chat/answer step** — indexing your site is done locally for
+Brace only needs the LLM for the **chat/answer step** — indexing your site is done locally for
 free (see `packages/server/src/embeddings.js`), so it never hits an external rate limit no matter
 how big your site is. You only need one key below.
 
@@ -13,7 +13,7 @@ here (thousands of requests/day on Llama 3.3 70B, more on smaller models).
 2. Sign in with Google or GitHub — no card needed.
 3. Open **API Keys** in the left sidebar → **Create API Key**.
 4. Copy the key (starts with `gsk_...`). You will not be able to see it again.
-5. Paste it into `scout/server/.env`:
+5. Paste it into `brace/server/.env`:
    ```
    LLM_PROVIDER=groq
    LLM_BASE_URL=https://api.groq.com/openai/v1
@@ -39,7 +39,7 @@ read this.
 3. Go to `https://openrouter.ai/collections/free-models` (or filter the models page to price = 0)
    and pick a current `:free` model — something in the Llama/Qwen/Gemini-flash family is a
    reasonable general-purpose pick for this use case.
-4. Paste into `scout/server/.env`:
+4. Paste into `brace/server/.env`:
    ```
    LLM_PROVIDER=openrouter
    LLM_BASE_URL=https://openrouter.ai/api/v1
@@ -52,7 +52,7 @@ read this.
    these for its own dashboard/analytics on your key. Not required for it to work.
 
 Because the free-tier limit is only 50 requests/day, OpenRouter is a fine choice for developing
-and testing Scout, but switch to Groq (or add OpenRouter credit) before pointing it at a real site
+and testing Brace, but switch to Groq (or add OpenRouter credit) before pointing it at a real site
 with real visitor traffic.
 
 ## Option C — Google Gemini (fallback / alternative)
@@ -64,7 +64,7 @@ Groq's — check your actual quota live in AI Studio rather than trusting any nu
 2. Sign in with a Google account.
 3. Click **Create API key** → choose "Create key in new project" if you don't have one.
 4. Copy the key.
-5. Paste it into `scout/server/.env`:
+5. Paste it into `brace/server/.env`:
    ```
    LLM_PROVIDER=gemini
    LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
@@ -72,11 +72,11 @@ Groq's — check your actual quota live in AI Studio rather than trusting any nu
    LLM_API_KEY=your_key_here
    ```
    (Google exposes an OpenAI-compatible endpoint, which is why the base URL looks like that —
-   Scout's server code doesn't need a separate code path per provider.)
+   Brace's server code doesn't need a separate code path per provider.)
 
 ## Option D — bring your own (OpenAI, Anthropic, a local Ollama model, anything OpenAI-compatible)
 
-Scout's server just does a plain HTTPS call to `${LLM_BASE_URL}/chat/completions` with a Bearer
+Brace's server just does a plain HTTPS call to `${LLM_BASE_URL}/chat/completions` with a Bearer
 key, so any OpenAI-compatible provider works — just set the three `LLM_*` variables in `.env`
 accordingly. This includes running a fully local model via Ollama (`LLM_BASE_URL=http://localhost:11434/v1`,
 no key needed, zero external calls at all) if you'd rather not use a third-party API.
