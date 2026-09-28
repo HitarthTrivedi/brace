@@ -39,6 +39,12 @@ read this.
 3. Go to `https://openrouter.ai/collections/free-models` (or filter the models page to price = 0)
    and pick a current `:free` model — something in the Llama/Qwen/Gemini-flash family is a
    reasonable general-purpose pick for this use case.
+   **Avoid model names containing "reasoning"** (e.g. anything ending `-reasoning:free`) for this
+   use case — they emit a long hidden chain-of-thought before the actual answer, which can easily
+   burn several thousand extra tokens and add many seconds of latency per reply, for a task
+   (short grounded Q&A) that doesn't benefit from that extra reasoning. A plain instruct/chat
+   model answers faster and cheaper here. The server also caps every reply at 400 output tokens
+   (`packages/server/src/llm.js`) as a backstop regardless of which model you pick.
 4. Paste into `brace/server/.env`:
    ```
    LLM_PROVIDER=openrouter

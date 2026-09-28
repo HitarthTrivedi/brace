@@ -23,7 +23,10 @@ export async function chatCompletion(messages) {
       ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       ...attributionHeaders,
     },
-    body: JSON.stringify({ model, messages, temperature: 0.3 }),
+    // max_tokens is the real backstop against runaway cost/latency: some free models
+    // (especially ones labeled "reasoning") emit long hidden chain-of-thought before
+    // the visible answer, which otherwise burns thousands of tokens per reply.
+    body: JSON.stringify({ model, messages, temperature: 0.3, max_tokens: 400 }),
   });
 
   if (!res.ok) {

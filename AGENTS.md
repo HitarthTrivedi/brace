@@ -105,6 +105,10 @@ developer asks otherwise.
    daily limit, no credit card). Put their key in `.env` as `LLM_API_KEY`.
    - If they don't have a key yet and want you to wait, pause here and ask them to paste it in
      once they've created one — don't fabricate a placeholder key and move on silently.
+   - If they're using OpenRouter, **do not pick a model with "reasoning" in its name** — those
+     emit a long hidden chain-of-thought before the visible answer, which costs several thousand
+     extra tokens and multiple extra seconds per reply for no benefit on this kind of short,
+     grounded Q&A task. Pick a plain instruct/chat model instead.
 4. Set `SITE_BASE_URL` in `.env` to the site's real base URL from step 1.
 5. Wire `/api/brace/chat` (referenced in the widget's `data-api-url`) to proxy to this server's
    `/api/chat` route — either by running the server standalone on its own port with a reverse
