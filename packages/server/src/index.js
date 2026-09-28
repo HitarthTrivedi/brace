@@ -14,6 +14,15 @@ using ONLY the site excerpts provided below. If the excerpts don't contain the a
 not sure and suggest what part of the site they might check instead — never make up information
 that isn't in the excerpts. Keep answers short (2-4 sentences) and conversational.`;
 
+/** First ~10 words of a chunk's body (after its heading) — enough to find it on the page. */
+function snippetOf(chunk, heading) {
+  if (!chunk) return null;
+  let body = chunk;
+  if (heading && body.startsWith(heading)) body = body.slice(heading.length);
+  const words = body.trim().split(/\s+/).filter(Boolean).slice(0, 10);
+  return words.length >= 3 ? words.join(" ") : null;
+}
+
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, history = [] } = req.body;
@@ -47,7 +56,15 @@ app.post("/api/chat", async (req, res) => {
     const sources = matches
       .filter((m) => (seen.has(m.url) ? false : seen.add(m.url)))
       .slice(0, 3)
-      .map((m) => ({ url: m.url, title: m.title }));
+      .map((m) => ({
+        url: m.url,
+        title: m.title,
+        // where on the page: the widget scrolls to the anchor, else finds the heading,
+        // else searches for the snippet. All null for an index built before sections.
+        heading: m.heading || null,
+        anchor: m.anchor || null,
+        snippet: snippetOf(m.chunk, m.heading),
+      }));
 
     res.json({ answer, sources });
   } catch (err) {

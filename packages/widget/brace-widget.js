@@ -9,6 +9,8 @@
  * degrades to CSS transitions without it) and brace-mascot.js (required — the widget
  * falls back to a plain unanimated launcher button if this fails to load, so a network
  * hiccup never leaves the site with no way to open the chat at all).
+ * brace-guide.js (optional) powers "Take me there": it keeps the conversation across
+ * page changes and spotlights the exact section an answer came from.
  */
 (function () {
   const TAG = "brace-widget";
@@ -75,6 +77,14 @@
     .msg.bot a { color: var(--brace-primary, #6d5ef8); }
     .msg .sources { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
     .msg .sources a { font-size: 12px; text-decoration: none; }
+    .msg .take-btn {
+      align-self: flex-start; margin-top: 2px;
+      background: var(--brace-primary, #6d5ef8); color: #fff; border: none; cursor: pointer;
+      border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 600;
+      transition: transform 0.15s ease;
+    }
+    .msg .take-btn:hover { transform: translateX(2px); }
+    .msg .take-btn:focus-visible { outline: 2px solid #14132b; outline-offset: 2px; }
 
     .typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 16px; background: #fff; border: 1px solid #ececf3; border-radius: 16px; border-bottom-left-radius: 4px; }
     .typing span { width: 6px; height: 6px; border-radius: 50%; background: #c6c6d4; animation: tbounce 1s infinite; }
@@ -155,6 +165,15 @@
     return window.__braceMascotLoad;
   }
 
+  function loadGuideLib() {
+    if (window.BraceGuide) return Promise.resolve(window.BraceGuide);
+    if (!window.__braceGuideLoad) {
+      window.__braceGuideLoad = loadScript(BASE_URL + "brace-guide.js").then(() => window.BraceGuide || null);
+    }
+    return window.__braceGuideLoad;
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
   class BraceWidget extends HTMLElement {
     async connectedCallback() {
       this.apiUrl = this.getAttribute("api-url") || "/api/brace/chat";
@@ -165,6 +184,8 @@
       const side = this.position.includes("left") ? "left" : "right";
 
       this.history = [];
+      this._log = []; // every rendered message, so the chat survives a page change
+      this._lastQuestion = "";
       this._open = false;
 
       const root = this.attachShadow({ mode: "open" });
@@ -203,7 +224,8 @@
         if (e.key === "Enter") this._submit();
       });
 
-      const [gsap, BraceMascot] = await Promise.all([loadGSAP(), loadMascotLib()]);
+      const [gsap, BraceMascot, Guide] = await Promise.all([loadGSAP(), loadMascotLib(), loadGuideLib()]);
+      this._guide = Guide;
 
       if (BraceMascot) {
         this._mascot = BraceMascot.create(root, {
@@ -227,7 +249,23 @@
       }
       this.$launcher.addEventListener("click", () => this.toggle());
 
-      this._addMessage("bot", this.greeting);
+      // Pick the conversation back up if the visitor just came from another page.
+      const saved = Guide ? Guide.restore() : null;
+      if (saved && saved.log && saved.log.length) {
+        this.history = saved.history || [];
+        saved.log.forEach((m) => this._addMessage(m.role, m.text, m.sources));
+        const q = [...saved.log].reverse().find((m) => m.role === "user");
+        this._lastQuestion = q ? q.text : "";
+      } else {
+        this._addMessage("bot", this.greeting);
+      }
+      // …and if they got here via "Take me there", finish the trip.
+      if (saved && saved.landing && Guide.samePage(saved.landing.url)) {
+        Guide.clearLanding();
+        if (document.readyState !== "complete") await new Promise((r) => window.addEventListener("load", r, { once: true }));
+        await wait(250); // let late layout (fonts, images) settle before measuring
+        this._land(saved.landing);
+      }
     }
 
     _positionCSS(side) {
@@ -262,19 +300,28 @@
     }
 
     _addMessage(role, text, sources) {
+      this._log.push({ role, text, sources: sources || null });
+      this._persist();
       const div = document.createElement("div");
       div.className = `msg ${role}`;
       div.innerHTML = role === "bot" ? mdToHtml(text) : escapeHtml(text);
       if (sources && sources.length) {
         const box = document.createElement("div");
         box.className = "sources";
+        // the best match gets the big button; every source link takes the same guided route
+        const take = document.createElement("button");
+        take.className = "take-btn";
+        take.type = "button";
+        take.textContent = "Take me there \u2192";
+        take.addEventListener("click", () => this._goTo(sources[0]));
+        box.appendChild(take);
         sources.forEach((s) => {
           const a = document.createElement("a");
           a.href = s.url;
-          a.textContent = "→ " + (s.title || s.url);
+          a.textContent = "\u2192 " + (s.title || s.url) + (s.heading ? " \u00b7 " + s.heading : "");
           a.addEventListener("click", (e) => {
             e.preventDefault();
-            this._navigate(s.url);
+            this._goTo(s);
           });
           box.appendChild(a);
         });
@@ -284,17 +331,59 @@
       this.$messages.scrollTop = this.$messages.scrollHeight;
     }
 
-    _navigate(url) {
+    _persist(landing) {
+      if (this._guide) this._guide.save({ log: this._log, history: this.history, landing: landing || null });
+    }
+
+    // "Take me there": same page → close the chat and spotlight the spot;
+    // same site → save the chat + where to land, mascot dives out of sight, navigate;
+    // another site → new tab, as before.
+    async _goTo(source) {
+      let target;
       try {
-        const target = new URL(url, window.location.href);
-        if (target.origin === window.location.origin) {
-          window.location.href = target.href;
-        } else {
-          window.open(target.href, "_blank", "noopener");
-        }
+        target = new URL(source.url, window.location.href);
       } catch (_) {
-        window.open(url, "_blank", "noopener");
+        return;
       }
+      if (target.origin !== window.location.origin) {
+        window.open(target.href, "_blank", "noopener");
+        return;
+      }
+      const landing = {
+        url: target.href,
+        anchor: source.anchor || null,
+        heading: source.heading || null,
+        snippet: source.snippet || null,
+        question: this._lastQuestion,
+      };
+      const Guide = this._guide;
+      if (Guide && Guide.samePage(target.href)) {
+        this.toggle(false);
+        await wait(350);
+        this._land(landing);
+        return;
+      }
+      this._persist(landing);
+      this._open = false;
+      this.$panel.classList.remove("open");
+      // let the mascot's drop read as it "going there", but don't hold the trip for the whole close
+      await Promise.race([this._mascot.close(), wait(450)]);
+      if (source.anchor) target.hash = source.anchor; // native jump if the guide can't run on arrival
+      window.location.href = target.href;
+    }
+
+    _land(landing) {
+      const Guide = this._guide;
+      const el = Guide && Guide.locate(landing);
+      if (!el) {
+        // index too old (no anchors) or the page changed since the crawl: they're on the right page, just not the exact spot
+        console.info("Brace: couldn't find the exact section on this page; showing the top of the page.");
+        return;
+      }
+      Guide.spotlight(this.shadowRoot, el, {
+        label: landing.question ? `for \u201c${landing.question}\u201d` : landing.heading || "",
+        onBack: () => this.toggle(true),
+      });
     }
 
     async _submit() {
@@ -303,8 +392,9 @@
       this.$input.value = "";
       this.$input.disabled = true;
       this.$send.disabled = true;
-      this._addMessage("user", text);
+      this._lastQuestion = text;
       this.history.push({ role: "user", content: text });
+      this._addMessage("user", text);
       this._mascot.thinking(true);
 
       const typing = document.createElement("div");
@@ -322,8 +412,8 @@
         const data = await res.json();
         typing.remove();
         const answer = data.answer || "Sorry, I couldn't find an answer to that.";
-        this._addMessage("bot", answer, data.sources);
         this.history.push({ role: "assistant", content: answer });
+        this._addMessage("bot", answer, data.sources);
         this._mascot.happy();
       } catch (err) {
         typing.remove();
