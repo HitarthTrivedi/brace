@@ -26,6 +26,17 @@ Brace has two parts:
   files, and offer a dry run ("show me what you'd do") if the developer seems unsure.
 - If any step fails (missing Node, no sitemap, etc.), stop and report — don't guess around it
   silently.
+- **If the target repo is an existing git repository with real history (i.e. not an empty/fresh
+  project), do the integration on a new branch** (e.g. `brace-integration`), not directly on
+  `main`/`master`/production, unless the developer explicitly says otherwise. This matters most
+  when the site is already live with real traffic — the developer should get to review a diff
+  before any of this reaches production, the same way they would for any other change.
+- **Ask where the backend should actually run long-term** before setting it up. A backend started
+  with `npm start` in a terminal only survives until that terminal closes — fine for local testing,
+  not fine for a live site. If the target is a framework with serverless functions (Next.js on
+  Vercel, Netlify, etc.), prefer wiring it in as an API route deployed alongside the rest of the
+  site — no new hosting needed. Otherwise, ask the developer where they want it hosted (their own
+  server, or a small host like Railway/Render/Fly.io) rather than assuming.
 
 ## 1. Detect the target project
 
