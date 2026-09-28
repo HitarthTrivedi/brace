@@ -50,9 +50,15 @@ process/serverless function).
 
 ## 3. Wire the widget into their site
 
-Add one line near the closing `</body>` (or the equivalent root layout for their framework):
+**Always wrap whatever you insert in `scout:start` / `scout:end` marker comments**, in the
+comment syntax native to that file type. This is what makes Scout cleanly removable later by any
+agent, regardless of which framework you're integrating into — see "Uninstalling Scout" at the
+end of this file. Never skip the markers, even for a one-line change.
+
+Plain HTML — add near the closing `</body>`:
 
 ```html
+<!-- scout:start -->
 <script
   src="/scout/widget/scout-widget.js"
   data-api-url="/api/scout/chat"
@@ -60,11 +66,21 @@ Add one line near the closing `</body>` (or the equivalent root layout for their
   data-position="bottom-right"
   defer
 ></script>
+<!-- scout:end -->
 ```
 
-For Next.js App Router, add this via `next/script` in `app/layout.tsx` with `strategy="lazyOnload"`
-instead of a raw tag. For WordPress, add it to `footer.php` or via the theme's script enqueue —
-never inline `<script>` directly into `functions.php` output without escaping.
+Next.js App Router — add via `next/script` in `app/layout.tsx` with `strategy="lazyOnload"`,
+wrapped the same way using JSX comment syntax:
+
+```jsx
+{/* scout:start */}
+<Script src="/scout/widget/scout-widget.js" data-api-url="/api/scout/chat" data-primary-color="#4f46e5" strategy="lazyOnload" />
+{/* scout:end */}
+```
+
+WordPress — add to `footer.php` or via the theme's script enqueue, wrapped in `<!-- scout:start -->`
+/ `<!-- scout:end -->` the same as plain HTML. Never inline `<script>` directly into `functions.php`
+output without escaping.
 
 Adjust `data-primary-color` to the color found in step 1. Leave the rest as defaults unless the
 developer asks otherwise.
@@ -93,9 +109,10 @@ npm run crawl -- --base-url=https://their-real-site.com
 ```
 
 This fetches `sitemap.xml` if present (falls back to same-origin link crawling, capped at 200
-pages), chunks the text, embeds it **locally** (no API call, no cost, no rate limit — via
-`@xenova/transformers`), and writes `scout/server/data/index.json`. Tell the developer to re-run
-this whenever they publish significant new content, or set up a cron/CI step to do it for them.
+pages), chunks the text, embeds it **locally** (no API call, no cost, no rate limit — see
+`packages/server/src/embeddings.js`), and writes `scout/server/data/index.json`. Tell the
+developer to re-run this whenever they publish significant new content, or set up a cron/CI step
+to do it for them.
 
 ## 6. Verify it actually works
 
@@ -107,8 +124,51 @@ this whenever they publish significant new content, or set up a cron/CI step to 
 4. If you have browser tooling available, do this verification yourself before telling the
    developer it's done. If not, ask them to check and report back.
 
-## 7. Report back
+## 7. Write an install manifest
+
+Before reporting back, write `scout/INSTALL_MANIFEST.md` in the developer's repo recording exactly
+what you did:
+
+```markdown
+# Scout install manifest
+
+- Installed: <date>
+- Copied to: <path, e.g. scout/widget/, scout/server/>
+- Files modified (script tag wrapped in scout:start/scout:end markers):
+  - <path/to/file> — <where in the file, e.g. "before </body>">
+  - <...>
+- Backend: <how it's run, e.g. "standalone on PORT=4000" or "app/api/scout/chat/route.ts proxy">
+- LLM provider: <groq | openrouter | gemini | other>, model <model id>
+- Re-crawl command: `npm run crawl -- --base-url=<site base url>` (run from <path>)
+```
+
+This is the only reliable way a future agent (possibly a different one, in a different session) can
+cleanly uninstall Scout later — **do not skip it**, even for a quick/manual install.
+
+## 8. Report back
 
 Summarize for the developer: what got installed, where, which LLM provider is wired up, how to
-re-crawl, and how to change the mascot's color/position later (both are just the `data-*`
-attributes on the script tag — no rebuild needed).
+re-crawl, how to change the mascot's color/position later (both are just the `data-*` attributes on
+the script tag — no rebuild needed), and that `scout/INSTALL_MANIFEST.md` is what a future "remove
+Scout" request will use.
+
+## Uninstalling Scout
+
+If a developer asks you to remove Scout instead of install it, do this:
+
+1. Look for `scout/INSTALL_MANIFEST.md` (or wherever step 7 wrote it) in their repo. If it exists,
+   use it as the exact list of what to revert.
+2. If no manifest exists (a manual or older install), fall back to searching the repo for
+   `scout:start` / `scout:end` marker pairs and any top-level `scout/` folder — but tell the
+   developer you're doing a best-effort removal without a manifest, and show them what you found
+   before deleting anything.
+3. For each modified file listed: delete everything between (and including) the `scout:start` /
+   `scout:end` markers, leaving the rest of the file untouched.
+4. Delete the copied widget/server folder(s).
+5. Stop any backend process you know is still running (ask the developer for the port/process if
+   you didn't start it yourself in this session).
+6. Delete `scout/INSTALL_MANIFEST.md` itself last, once everything else is confirmed removed.
+7. Report back exactly what was removed and confirm the site still builds/runs normally afterward.
+
+Never delete a file outright merely because "scout" appears in its name or path without confirming
+it's actually something Scout created — when in doubt, ask.
